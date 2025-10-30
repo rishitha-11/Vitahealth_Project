@@ -1,0 +1,23 @@
+# ----------------------------------
+# BEGIN Python Backend Exclusions
+# ----------------------------------
+
+# Python Virtual Environments
+.venv/
+backend/.venv/ 
+
+# Python generated files
+__pycache__/
+*.pyc
+
+# Local Data and Large Model Files
+db.sqlite3
+uploads/
+/tmp/
+*.h5
+# If you used a specific local temp directory (e.g., if you used Option 2)
+# temp_models/ 
+
+# ----------------------------------
+# END Python Backend Exclusions
+# ----------------------------------

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VitaBot Chatbot — input fixed</title>
+
+  <!-- Material Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,1,0" />
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap');
+
+    :root{
+      --popup-max-width:640px;
+      --popup-max-height:760px;
+      --header-height:72px;
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+    body{width:100%;min-height:100vh;background:linear-gradient(#EEEEFF,#C8C7FF)}
+
+    /* toggler */
+    #chatbot-toggler{position:fixed;bottom:30px;right:35px;border:none;height:50px;width:50px;display:flex;cursor:pointer;align-items:center;justify-content:center;border-radius:50%;background:#5350C4;box-shadow:0 0 20px rgba(0,0,0,.1);transition:all .2s;z-index:2200}
+    body.show-chatbot #chatbot-toggler{transform:rotate(90deg)}
+    #chatbot-toggler span{color:#fff;position:absolute}
+    #chatbot-toggler span:last-child,body.show-chatbot #chatbot-toggler span:first-child{opacity:0}
+    body.show-chatbot #chatbot-toggler span:last-child{opacity:1}
+
+    /* popup as flex column so footer always stays visible */
+    .chatbot-popup{
+      position:fixed;
+      right:35px;
+      bottom:90px;
+      width:420px;
+      max-width:calc(100% - 48px);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      background:#fff;
+      border-radius:15px;
+      opacity:0;
+      pointer-events:none;
+      transform:scale(.2);
+      transform-origin:bottom right;
+      box-shadow:0 0 128px 0 rgba(0,0,0,.1),0 32px 64px -48px rgba(0,0,0,.5);
+      transition:all .18s ease-in-out;
+      z-index:2100;
+    }
+    body.show-chatbot .chatbot-popup{opacity:1;pointer-events:auto;transform:scale(1)}
+
+    .chat-header{display:flex;align-items:center;padding:16px 20px;background:#5350C4;justify-content:space-between;flex:0 0 auto;height:var(--header-height)}
+    .header-info{display:flex;gap:10px;align-items:center}
+    .chatbot-logo{width:35px;height:35px;padding:6px;fill:#5350C4;flex-shrink:0;background:#fff;border-radius:50%}
+    .logo-text{color:#fff;font-weight:600;font-size:1.15rem;letter-spacing:.02rem}
+    .chat-header .controls{display:flex;gap:8px;align-items:center}
+    .icon-btn{height:34px;width:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;color:#fff;cursor:pointer}
+    .chat-header #close-chatbot{border:none;color:#fff;height:40px;width:40px;font-size:1.9rem;padding-top:2px;cursor:pointer;border-radius:50%;background:none;transition:.2s}
+    .chat-header #close-chatbot:hover{background:#3d39ac}
+
+    .chat-body{padding:20px;gap:18px;display:flex;overflow-y:auto;flex:1 1 auto;flex-direction:column;scrollbar-width:thin;scrollbar-color:#ccccf5 transparent;background:transparent}
+    .message{display:flex;gap:11px;align-items:center}
+    .bot-avatar{width:35px;height:35px;padding:6px;fill:#fff;flex-shrink:0;margin-bottom:2px;align-self:flex-end;border-radius:50%;background:#5350C4}
+    .message-text{padding:12px 16px;max-width:75%;font-size:.95rem}
+    .bot-message .message-text{background:#F2F2FF;border-radius:13px 13px 13px 3px}
+    .user-message{flex-direction:column;align-items:flex-end}
+    .user-message .message-text{color:#fff;background:#5350C4;border-radius:13px 13px 3px 13px}
+    .user-message .attachment{width:50%;margin-top:-7px;border-radius:13px 3px 13px 13px;object-fit:contain}
+    .bot-message .thinking-indicator{display:flex;gap:4px;padding-block:15px}
+    .dot{height:7px;width:7px;opacity:.7;border-radius:50%;background:#6F6BC2;animation:dotPulse 1.8s ease-in-out infinite}
+    .dot:nth-child(1){animation-delay:.2s}
+    .dot:nth-child(2){animation-delay:.3s}
+    .dot:nth-child(3){animation-delay:.4s}
+    @keyframes dotPulse{0%,44%{transform:translateY(0)}28%{opacity:.4;transform:translateY(-4px)}44%{opacity:.2}}
+
+    /* footer fixed in flex layout (stays visible) */
+    .chat-footer{flex:0 0 auto;background:#fff;padding:12px 16px 18px;position:relative}
+    .chat-form{display:flex;align-items:center;position:relative;background:#fff;border-radius:32px;outline:1px solid #CCCCE5;box-shadow:0 0 8px rgba(0,0,0,.06)}
+    /* FIX: keep input box fixed height and show internal scrollbar for long text */
+    .chat-form .message-input{
+      width:100%;
+      height:48px;               /* fixed height so the footer doesn't move */
+      outline:none;
+      resize:none;
+      border:none;
+      max-height:48px;
+      border-radius:inherit;
+      font-size:.95rem;
+      padding:12px 12px 10px 16px;
+      overflow-y:auto;           /* internal scroll for long input */
+      line-height:1.2;
+      white-space:pre-wrap;
+      word-break:break-word;
+      background:transparent;
+    }
+    .chat-controls{gap:6px;height:48px;display:flex;padding-right:6px;align-items:center;align-self:flex-end}
+    .chat-controls button{height:34px;width:34px;border:none;cursor:pointer;color:#706DB0;border-radius:50%;font-size:1.15rem;background:none;transition:.2s;display:inline-flex;align-items:center;justify-content:center}
+    .chat-controls button:hover{color:#3d39ac;background:#f1f1ff}
+    .chat-controls #send-message{color:#fff;background:#5350C4}
+    /* hide emoji/file UI as requested (ignored) */
+    .chat-controls .emoji, .chat-controls .file { display:none; }
+
+    /* local modal floated inside popup (keeps API key modal) */
+    .chatbot-popup .overlay-local{position:absolute;inset:0;background:rgba(0,0,0,.12);z-index:2150;display:none;border-radius:inherit}
+    .chatbot-popup .overlay-local.show{display:block}
+    .chatbot-popup .api-modal{position:absolute;right:18px;top:56px;width:320px;max-width:calc(100% - 36px);background:#fff;border-radius:10px;padding:10px;box-shadow:0 8px 40px rgba(0,0,0,.2);z-index:2160;display:none}
+    .chatbot-popup .api-modal.show{display:block}
+    .chatbot-popup .api-modal textarea{width:100%;height:60px;padding:8px;border-radius:6px;border:1px solid #ddd;resize:vertical}
+    .chatbot-popup .api-modal .warning{font-size:.82rem;color:#b33;margin-top:8px;background:#fff0f0;padding:8px;border-radius:6px;border:1px solid #ffd6d6}
+    .chatbot-popup .api-modal .note{font-size:.82rem;color:#444;margin-top:8px}
+
+    /* FULL expanded view */
+    .chatbot-popup.full{
+      left:50% !important;
+      right:auto !important;
+      top:80px !important;
+      bottom:auto !important;
+      transform:translateX(-50%) scale(1) !important;
+      width:var(--popup-max-width) !important;
+      height:min(var(--popup-max-height), 82vh) !important;
+      border-radius:12px !important;
+      background: linear-gradient(180deg,#EFE9FF 0%, #D7C8FF 50%, #EDEBFF 100%) !important;
+      box-shadow: 0 40px 100px rgba(81,63,158,0.18), 0 8px 24px rgba(74,61,133,0.08) !important;
+      opacity:1 !important;
+      pointer-events:auto !important;
+    }
+    .chatbot-popup.full .chat-header{background:#5e49d8;padding:18px 26px;border-top-left-radius:12px;border-top-right-radius:12px}
+    .chatbot-popup.full .logo-text{color:#fff}
+    .chatbot-popup.full .chat-body{background:transparent;padding:28px 36px;margin-bottom:0;overflow-y:auto}
+    .chatbot-popup.full .chat-footer{background:transparent;padding:16px 26px 22px;position:relative;z-index:2140}
+    .chatbot-popup.full .chat-form{background: rgba(255,255,255,0.95);margin:0 8px}
+
+    @media(max-width:520px){
+      #chatbot-toggler{right:20px;bottom:20px}
+      .chatbot-popup{right:0;bottom:0;height:100%;border-radius:0;width:100%}
+      .chat-header{padding:12px 15px}
+      .chat-body{height:calc(100% - 110px);padding:18px 15px}
+      .chat-footer{padding:10px 12px 12px}
+    }
+  </style>
+</head>
+<body>
+  <!-- Toggler -->
+  <button id="chatbot-toggler" aria-label="Open chat">
+    <span class="material-symbols-rounded">mode_comment</span>
+    <span class="material-symbols-rounded">close</span>
+  </button>
+
+  <!-- Chat Popup -->
+  <div class="chatbot-popup" role="dialog" aria-label="Chat popup" id="chat-popup">
+    <div class="chat-header">
+      <div class="header-info">
+        <svg class="chatbot-logo" xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M738.3 287.6H285.7c-59 0-106.8 47.8-106.8 106.8v303.1c0 59 47.8 106.8 106.8 106.8h81.5v111.1c0 .7.8 1.1 1.4.7l166.9-110.6 41.8-.8h117.4l43.6-.4c59 0 106.8-47.8 106.8-106.8V394.5c0-59-47.8-106.9-106.8-106.9zM351.7 448.2c0-29.5 23.9-53.5 53.5-53.5s53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5-53.5-23.9-53.5-53.5zm157.9 267.1c-67.8 0-123.8-47.5-132.3-109h264.6c-8.6 61.5-64.5 109-132.3 109zm110-213.7c-29.5 0-53.5-23.9-53.5-53.5s23.9-53.5 53.5-53.5 53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5zM867.2 644.5V453.1h26.5c19.4 0 35.1 15.7 35.1 35.1v121.1c0 19.4-15.7 35.1-35.1 35.1h-26.5zM95.2 609.4V488.2c0-19.4 15.7-35.1 35.1-35.1h26.5v191.3h-26.5c-19.4 0-35.1-15.7-35.1-35.1zM561.5 149.6c0 23.4-15.6 43.3-36.9 49.7v44.9h-30v-44.9c-21.4-6.5-36.9-26.3-36.9-49.7 0-28.6 23.3-51.9 51.9-51.9s51.9 23.3 51.9 51.9z"/></svg>
+        <h2 class="logo-text">VitaBot🩺</h2>
+      </div>
+
+      <div class="controls">
+        <!-- API key button (client-only flow) -->
+        <button id="open-api-key" class="icon-btn" title="Enter API Key">
+          <span class="material-symbols-rounded">vpn_key</span>
+        </button>
+        <button id="close-chatbot" class="material-symbols-rounded" title="Collapse chat">keyboard_arrow_down</button>
+      </div>
+    </div>
+
+    <!-- Local overlay and modal (inside popup) -->
+    <div class="overlay-local" id="local-overlay"></div>
+    <div class="api-modal" id="api-modal" role="dialog" aria-modal="true" aria-label="Enter API Key">
+      <h3>Paste API key (client-only demo)</h3>
+      <textarea id="api-key-input" placeholder="Paste your Groq/OpenAI-compatible API key here"></textarea>
+      <div class="row">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="save-api" style="padding:8px 12px;border-radius:8px;border:1px solid #5350C4;background:#5350C4;color:#fff;cursor:pointer">Save key</button>
+          <button id="clear-api" style="padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;cursor:pointer">Clear</button>
+        </div>
+        <button id="close-modal" style="padding:6px 8px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer">Close</button>
+      </div>
+      <div class="warning">Warning: this key is stored only in page memory (not sent to any server). This is insecure — anyone who opens DevTools can read the key.</div>
+      <div class="note">If the API refuses requests due to CORS, you'll see a "Network/CORS" error. Use a server/proxy in that case.</div>
+    </div>
+
+    <div class="chat-body" id="chat-body" aria-live="polite">
+      <div class="message bot-message">
+        <svg class="bot-avatar" xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M738.3 287.6H285.7c-59 0-106.8 47.8-106.8 106.8v303.1c0 59 47.8 106.8 106.8 106.8h81.5v111.1c0 .7.8 1.1 1.4.7l166.9-110.6 41.8-.8h117.4l43.6-.4c59 0 106.8-47.8 106.8-106.8V394.5c0-59-47.8-106.9-106.8-106.9zM351.7 448.2c0-29.5 23.9-53.5 53.5-53.5s53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5-53.5-23.9-53.5-53.5zm157.9 267.1c-67.8 0-123.8-47.5-132.3-109h264.6c-8.6 61.5-64.5 109-132.3 109zm110-213.7c-29.5 0-53.5-23.9-53.5-53.5s23.9-53.5 53.5-53.5 53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5zM867.2 644.5V453.1h26.5c19.4 0 35.1 15.7 35.1 35.1v121.1c0 19.4-15.7 35.1-35.1 35.1h-26.5zM95.2 609.4V488.2c0-19.4 15.7-35.1 35.1-35.1h26.5v191.3h-26.5c-19.4 0-35.1-15.7-35.1-35.1zM561.5 149.6c0 23.4-15.6 43.3-36.9 49.7v44.9h-30v-44.9c-21.4-6.5-36.9-26.3-36.9-49.7 0-28.6 23.3-51.9 51.9-51.9s51.9 23.3 51.9 51.9z"/></svg>
+        <div class="message-text">Hey there<br/>How can I help you today?</div>
+      </div>
+    </div>
+
+    <div class="chat-footer">
+      <form class="chat-form" id="chat-form" onsubmit="return false;">
+        <!-- FIXED input: fixed height, internal scroll for long text -->
+        <textarea id="message-input" class="message-input" placeholder="Message..." required></textarea>
+
+        <div class="chat-controls" role="group" aria-label="Chat controls">
+          <!-- emoji and file icons hidden by CSS per your request to ignore them -->
+          <button type="button" class="emoji" aria-hidden="true">🙂</button>
+          <div class="file" aria-hidden="true"></div>
+
+          <button id="voice" type="button" class="material-symbols-rounded" title="Voice input">mic</button>
+          <button id="send-message" type="button" class="material-symbols-rounded" title="Send">arrow_upward</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Single-file chat logic with fixed textarea behavior, emoji/file ignored
+    (function(){
+      const chatBody = document.getElementById('chat-body');
+      const messageInput = document.getElementById('message-input');
+      const sendBtn = document.getElementById('send-message');
+      const toggleBtn = document.getElementById('chatbot-toggler');
+      const closeChat = document.getElementById('close-chatbot');
+      const popup = document.getElementById('chat-popup');
+
+      // API key modal elements
+      const apiModal = document.getElementById('api-modal');
+      const localOverlay = document.getElementById('local-overlay');
+      const openApiBtn = document.getElementById('open-api-key');
+      const saveApiBtn = document.getElementById('save-api');
+      const clearApiBtn = document.getElementById('clear-api');
+      const closeModalBtn = document.getElementById('close-modal');
+      const apiKeyInput = document.getElementById('api-key-input');
+
+      // client-only variables
+      const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+      let GROQ_API_KEY = "";
+
+      // small helpers
+      function escapeHtml(s){ return String(s).replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+      function createMessageElement(content, ...classes){
+        const d = document.createElement('div');
+        d.classList.add('message', ...classes);
+        d.innerHTML = content;
+        return d;
+      }
+      function pushSystemBubble(text){
+        // avoid duplicate same-text system bubble
+        const existing = Array.from(chatBody.querySelectorAll('.bot-message .message-text')).map(n => n.innerText && n.innerText.trim());
+        if (existing.includes(text.trim())) return;
+        const content = `
+          <svg class="bot-avatar" xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M738.3 287.6H285.7c-59 0-106.8 47.8-106.8 106.8v303.1c0 59 47.8 106.8 106.8 106.8h81.5v111.1c0 .7.8 1.1 1.4.7l166.9-110.6 41.8-.8h117.4l43.6-.4c59 0 106.8-47.8 106.8-106.8V394.5c0-59-47.8-106.9-106.8-106.9zM351.7 448.2c0-29.5 23.9-53.5 53.5-53.5s53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5-53.5-23.9-53.5-53.5zm157.9 267.1c-67.8 0-123.8-47.5-132.3-109h264.6c-8.6 61.5-64.5 109-132.3 109zm110-213.7c-29.5 0-53.5-23.9-53.5-53.5s23.9-53.5 53.5-53.5 53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5zM867.2 644.5V453.1h26.5c19.4 0 35.1 15.7 35.1 35.1v121.1c0 19.4-15.7 35.1-35.1 35.1h-26.5zM95.2 609.4V488.2c0-19.4 15.7-35.1 35.1-35.1h26.5v191.3h-26.5c-19.4 0-35.1-15.7-35.1-35.1zM561.5 149.6c0 23.4-15.6 43.3-36.9 49.7v44.9h-30v-44.9c-21.4-6.5-36.9-26.3-36.9-49.7 0-28.6 23.3-51.9 51.9-51.9s51.9 23.3 51.9 51.9z"/></svg>
+          <div class="message-text">${escapeHtml(text)}</div>
+        `;
+        const el = createMessageElement(content, 'bot-message');
+        chatBody.appendChild(el);
+        chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+      }
+
+      // API modal functions
+      function openLocalModal(){ apiModal.classList.add('show'); localOverlay.classList.add('show'); setTimeout(()=> apiKeyInput.focus(),60); }
+      function closeLocalModal(){ apiModal.classList.remove('show'); localOverlay.classList.remove('show'); }
+
+      openApiBtn.addEventListener('click', (e)=>{ e.stopPropagation(); if(!document.body.classList.contains('show-chatbot')){ document.body.classList.add('show-chatbot'); popup.classList.add('full'); } openLocalModal(); });
+      closeModalBtn.addEventListener('click', closeLocalModal);
+      localOverlay.addEventListener('click', closeLocalModal);
+      saveApiBtn.addEventListener('click', ()=> { GROQ_API_KEY = apiKeyInput.value.trim(); closeLocalModal(); pushSystemBubble("API key saved to page memory (client-only demo)."); });
+      clearApiBtn.addEventListener('click', ()=> { GROQ_API_KEY = ""; apiKeyInput.value=""; closeLocalModal(); pushSystemBubble("API key cleared."); });
+
+      // sending logic: add user bubble and create a thinking bubble for the bot
+      function handleOutgoing(e){
+        if(e && e.preventDefault) e.preventDefault();
+        const txt = messageInput.value.trim();
+        if(!txt) return;
+  // user bubble
+  const userContent = `<div class="message-text"></div>`;
+  const userDiv = createMessageElement(userContent, 'user-message');
+  userDiv.querySelector('.message-text').innerText = txt;
+        chatBody.appendChild(userDiv);
+        chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+
+        // clear input (stay fixed height)
+        messageInput.value = "";
+
+        // thinking bubble then call API
+        setTimeout(()=>{
+          const incomingContent = `
+            <svg class="bot-avatar" xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M738.3 287.6H285.7c-59 0-106.8 47.8-106.8 106.8v303.1c0 59 47.8 106.8 106.8 106.8h81.5v111.1c0 .7.8 1.1 1.4.7l166.9-110.6 41.8-.8h117.4l43.6-.4c59 0 106.8-47.8 106.8-106.8V394.5c0-59-47.8-106.9-106.8-106.9zM351.7 448.2c0-29.5 23.9-53.5 53.5-53.5s53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5-53.5-23.9-53.5-53.5zm157.9 267.1c-67.8 0-123.8-47.5-132.3-109h264.6c-8.6 61.5-64.5 109-132.3 109zm110-213.7c-29.5 0-53.5-23.9-53.5-53.5s23.9-53.5 53.5-53.5 53.5 23.9 53.5 53.5-23.9 53.5-53.5 53.5zM867.2 644.5V453.1h26.5c19.4 0 35.1 15.7 35.1 35.1v121.1c0 19.4-15.7 35.1-35.1 35.1h-26.5zM95.2 609.4V488.2c0-19.4 15.7-35.1 35.1-35.1h26.5v191.3h-26.5c-19.4 0-35.1-15.7-35.1-35.1zM561.5 149.6c0 23.4-15.6 43.3-36.9 49.7v44.9h-30v-44.9c-21.4-6.5-36.9-26.3-36.9-49.7 0-28.6 23.3-51.9 51.9-51.9s51.9 23.3 51.9 51.9z"/></svg>
+            <div class="message-text"><div class="thinking-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+          `;
+          const incoming = createMessageElement(incomingContent, 'bot-message', 'thinking');
+          chatBody.appendChild(incoming);
+          chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+
+          // NOTE: the client-only API call is kept as in your originals.
+          // If no API key, show error text; otherwise try to call API (may fail due to CORS).
+          if(!GROQ_API_KEY){
+            // show immediate error inside thinking bubble
+            setTimeout(()=> {
+              incoming.querySelector('.message-text').innerText = "⚠ Missing API key. Click the key icon and paste your key.";
+              incoming.classList.remove('thinking');
+            }, 400);
+            return;
+          }
+
+          // perform fetch (kept minimal; behaviour unchanged)
+          (async ()=>{
+            try{
+              const payload = {
+                model: "openai/gpt-oss-20b",
+                messages: [{ role: "user", content: txt }]
+              };
+              const resp = await fetch(GROQ_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+                body: JSON.stringify(payload)
+              });
+              const text = await resp.text();
+              let json = null;
+              try{ json = JSON.parse(text); }catch(e){ json = null; }
+                if(!resp.ok){
+                const serverMsg = json?.error?.message || json?.message || text || resp.statusText;
+                incoming.querySelector('.message-text').innerText = `⚠ API error (${resp.status}): ${serverMsg}`;
+                incoming.classList.remove('thinking');
+                return;
+              }
+              const aiText = (json?.choices?.[0]?.message?.content) || (json?.choices?.[0]?.text) || "";
+              if(!aiText){
+                incoming.querySelector('.message-text').innerText = "⚠ Unexpected API response format. See console for details.";
+                incoming.classList.remove('thinking');
+                return;
+              }
+              incoming.querySelector('.message-text').innerText = aiText.trim();
+              incoming.classList.remove('thinking');
+              chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+            }catch(err){
+              console.error(err);
+              incoming.querySelector('.message-text').innerText = "⚠ Network/CORS error: browser blocked the request or CORS prevented it.";
+              incoming.classList.remove('thinking');
+            }
+          })();
+
+        }, 200);
+      }
+
+      // Enter to send (Shift+Enter for newline is disabled because textarea fixed height;
+      // if user wants Shift+Enter for newline, we could allow it but with fixed-height textarea
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          const userMessage = messageInput.value.trim();
+          if (userMessage) handleOutgoing(e);
+        }
+      });
+      sendBtn.addEventListener('click', handleOutgoing);
+
+      // voice recognition (unchanged)
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(SpeechRecognition){
+        const recognition = new SpeechRecognition();
+        recognition.onresult = (e) => { messageInput.value = e.results[0][0].transcript; };
+        document.getElementById('voice').addEventListener('click', ()=> { try{ recognition.start(); }catch(e){ console.warn(e); } });
+      } else { document.getElementById('voice').style.display = 'none'; }
+
+      // UI toggles
+      toggleBtn.addEventListener('click', ()=> { document.body.classList.toggle('show-chatbot'); popup.classList.toggle('full'); closeLocalModal(); });
+      closeChat.addEventListener('click', ()=> { document.body.classList.remove('show-chatbot'); popup.classList.remove('full'); closeLocalModal(); });
+
+      // small modal helper referenced above
+      function closeLocalModal(){ apiModal.classList.remove('show'); localOverlay.classList.remove('show'); }
+
+      // initial system bubble
+      pushSystemBubble("Click the key icon to paste your API key (required).");
+
+      // keep scroll at bottom on resize
+      window.addEventListener('resize', ()=> setTimeout(()=> chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' }), 120));
+    })();
+  </script>
+</body>
+</html>
