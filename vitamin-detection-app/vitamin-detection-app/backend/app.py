@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify, send_file # <-- Added send_file
 from flask_cors import CORS
+from huggingface_hub import hf_hub_download
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import datetime
 import os
-import gdown
+#import gdown
 import tempfile
 from vitamin_data.diet_data import vitamin_diets
 
@@ -35,26 +36,32 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # === Load Model Once on Startup ===
 #MODEL_PATH = os.path.join('model', 'vitamin_deficiency_model .h5')
 #JSON_PATH = os.path.join("model", "class_indices.json")
-DRIVE_FILE_ID = '1WWbeQGkNBZg1vRKimuJXEo8zVMASP6sQ'
-MODEL_FILENAME = 'vitamin_deficiency_model.h5'
-MODEL_PATH = os.path.join(tempfile.gettempdir(), MODEL_FILENAME) # <-- Use tempfile
+#DRIVE_FILE_ID = '1WWbeQGkNBZg1vRKimuJXEo8zVMASP6sQ'
+#MODEL_FILENAME = 'vitamin_deficiency_model.h5'
+#MODEL_PATH = os.path.join(tempfile.gettempdir(), MODEL_FILENAME) # <-- Use tempfile
+
+MODEL_PATH = os.path.join("model", "vitamin_deficiency_model.h5")
+HF_REPO_ID = "rishitha11/vitamindetector"
+HF_FILENAME = "vitamin_deficiency_model.h5"
+
+
 JSON_PATH = os.path.join("model", "class_indices.json")
 CSV_PATH = os.path.join("model", "vitamin_deficiency_data.csv")
 # Before Line 41:
 def download_model_if_missing():
-    """Downloads the model from Google Drive if it doesn't exist locally."""
+    """Downloads the model from Hugging Face if it doesn't exist locally"""
     if not os.path.exists(MODEL_PATH):
-        print("Downloading model from Google Drive...")
+        print("Downloading model from Hugging Face...")
         try:
             # gdown will download the file, handling the large file warning automatically
-            gdown.download(id=DRIVE_FILE_ID, output=MODEL_PATH, quiet=False)
-            print("Model download complete.")
+            downloaded_path = hf_hub_download(repo_id=HF_REPO_ID, filename=HF_FILENAME, local_dir=os.path.dirname(MODEL_PATH))
+            print(f"Model downloaded successfully to: {downloaded_path}")
         except Exception as e:
-            print(f"Error downloading model: {e}")
+            print(f'Error downloading model from Hugging Face: {e}')
             # You might want to exit the app or raise the exception here
             raise e
     else:
-        print("Model file already exists in /tmp. Skipping download.")
+        print("Model file exists locally. Skipping download.")
 
 download_model_if_missing()
 model = load_vitamin_model(MODEL_PATH)
